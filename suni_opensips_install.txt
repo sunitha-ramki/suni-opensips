@@ -1,0 +1,97 @@
+From opensips downloads 
+##https://www.opensips.org/Downloads/Downloads#toc4
+docker pull opensips/opensips
+
+docker images # opensips/opensips image is listed
+
+docker run -itd --name opensips -p 192.168.0.103:5060:5060 --cap-add=NET_ADMIN opensips/opensips 
+
+docker container ls # shows the containers
+CONTAINER ID   IMAGE               COMMAND                  CREATED          STATUS          PORTS                                    NAMES
+96b00849886f   opensips/opensips   "/usr/sbin/opensips …"   11 seconds ago   Up 8 seconds    5060/udp, 192.168.0.103:5060->5060/tcp   opensips
+
+# to get into docker container
+docker exec -it opensips bash
+
+#https://support.ucsd.edu/its?id=kb_article_view&sysparm_article=KB0032481&sys_kb_id=228354701b435898e519c9176e4bcb67
+root@96b00849886f:/etc/opensips# cat /etc/os-release 
+PRETTY_NAME="Debian GNU/Linux 10 (buster)"
+NAME="Debian GNU/Linux"
+VERSION_ID="10"
+VERSION="10 (buster)"
+VERSION_CODENAME=buster
+ID=debian
+HOME_URL="https://www.debian.org/"
+SUPPORT_URL="https://www.debian.org/support"
+BUG_REPORT_URL="https://bugs.debian.org/"
+root@96b00849886f:/etc/opensips# 
+
+
+#inside opensips container
+root@96b00849886f:/etc/opensips# opensips -V 
+version: opensips 3.1.3 (x86_64/linux)
+flags: STATS: On, DISABLE_NAGLE, USE_MCAST, SHM_MMAP, PKG_MALLOC, Q_MALLOC, F_MALLOC, HP_MALLOC, DBG_MALLOC, FAST_LOCK-ADAPTIVE_WAIT
+ADAPTIVE_WAIT_LOOPS=1024, MAX_RECV_BUFFER_SIZE 262144, MAX_LISTEN 16, MAX_URI_SIZE 1024, BUF_SIZE 65535
+poll method support: poll, epoll, sigio_rt, select.
+main.c compiled on  with gcc 8
+root@96b00849886f:/etc/opensips# 
+
+
+
+#apt-get install vim # throws error; so we have to install apt-file and upgrade
+#when vim package not found error
+apt-get update
+apt-get install apt-file
+apt-get upgrade
+
+apt-get install vim git opensips-mysql-module curl
+
+
+/etc/opensips/opensips.cfg
+Edit opensips.cfg # to add Load module event_stream.so 
+
+
+- #### when you get fifo error or opensips exits
+        ## touch command creates new empty files
+        ### on opensips container shell
+        touch /tmp/opensips_fifo
+        chmod 777 /tmp/opensips_fifo
+        /etc/init.d/opensips restart
+
+#https://github.com/OpenSIPS/opensips-cli/blob/master/docs/INSTALLATION.md
+##installing dependencies for opensips-cli
+apt install python3 python3-pip python3-dev gcc default-libmysqlclient-dev \
+                 python3-mysqldb python3-sqlalchemy python3-sqlalchemy-utils \
+                 python3-openssl
+
+#https://github.com/OpenSIPS/opensips-cli/blob/master/docs/INSTALLATION.md
+# install opensips-cli from source
+git clone https://github.com/opensips/opensips-cli ~/src/opensips-cli
+cd ~/src/opensips-cli
+python3 setup.py install clean           
+
+
+#restart opensips
+/etc/init.d/opensips restart
+
+#To check opensips-cli
+opensips-cli -x diagnose sip # This will start SIP
+
+
+#To create opensips database and opensips user with all privileges
+opensips-cli -x database create opensips
+
+#opensips-cli.cfg file is created in /root
+[default]
+log_level: DEBUG
+prompt_name: opensips-cli
+prompt_intro: Welcome to OpenSIPS Command Line Interface!
+prompt_emptyline_repeat_cmd: False
+history_file: ~/.opensips-cli.history
+history_file_size: 1000
+output_type: pretty-print
+communication_type: fifo
+fifo_file: /tmp/opensips_fifo
+
+database_admin_url: mysql://root@192.168.0.103:3306
+database_url: mysql://opensips:opensipsrw@192.168.0.103:3306
